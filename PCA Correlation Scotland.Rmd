@@ -1,0 +1,167 @@
+---
+title: "Untitled"
+author: "Zain Asaf"
+date: "2025-02-20"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+```
+
+```{r}
+library(tidyverse)
+library(ggplot2)
+```
+
+```{r}
+census_df <- read_csv("data/OA21CD_census_2021.csv") 
+segmentation_df <- read_csv("data/scotland_oa_segmentation.csv")
+```
+
+```{r}
+census_df <- census_df %>% rename(oa21cd = OA21CD)
+
+# Merge datasets on 'oa21cd'
+merged_df <- left_join(census_df, segmentation_df, by = "oa21cd")
+
+numeric_cols <- merged_df %>% select(where(is.numeric))
+
+# Compute Pearson correlation matrix
+cor_matrix <- cor(numeric_cols, use = "pairwise.complete.obs", method = "pearson")
+
+# Extract correlations between demographics and PCA dimensions
+pca_correlation <- cor_matrix %>%
+  as_tibble(rownames = "variable") %>%
+  select(variable, low_diversity, security) %>%
+  filter(!variable %in% c("low_diversity", "security"))
+
+# Save the correlation matrix as CSV
+write_csv(pca_correlation, ("data/demographic_pca_correlations.csv"))
+
+# Print the first few rows
+print(head(pca_correlation))
+
+```
+
+```{r}
+
+
+
+pca_correlation_long <- pca_correlation %>%
+  pivot_longer(cols = c(low_diversity, security), names_to = "dimension", values_to = "correlation")
+
+
+pca_correlation_long <- pca_correlation_long %>%
+  mutate(variable = reorder(variable, abs(correlation)))
+
+# Plot bar chart
+ggplot(pca_correlation_long, aes(x = variable, y = correlation, fill = dimension)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  coord_flip() +  # Flip for readability
+  labs(title = "Correlation of Demographics with PCA Dimensions",
+       x = "Demographic Variable", y = "Pearson Correlation") +
+  theme_minimal()
+
+
+```
+
+```{r}
+## sorted by correlation value
+
+pca_correlation_long <- pca_correlation %>%
+  pivot_longer(cols = c(low_diversity, security), 
+               names_to = "dimension", values_to = "correlation")
+
+
+ggplot(pca_correlation_long, aes(x = dimension, y = reorder(variable, correlation), fill = correlation)) +
+  geom_tile() +
+  scale_fill_gradient2(low = "blue", mid = "white", high = "red", midpoint = 0) +
+  labs(title = "Correlation Heatmap: Demographics vs PCA Dimensions",
+       x = "PCA Dimension", y = "Demographic Variable", fill = "Correlation") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+
+
+```
+
+```{r}
+
+ggplot(pca_correlation_long, aes(x = variable, y = correlation, color = dimension)) +
+  geom_point(size = 4) +
+  geom_segment(aes(x = variable, xend = variable, y = 0, yend = correlation)) +
+  coord_flip() +
+  labs(title = "Lollipop Chart: Demographics vs PCA Correlation",
+       x = "Demographic Variable", y = "Pearson Correlation") +
+  theme_minimal()
+
+```
+
+```{r}
+## best way to do it is with the nine different categoreis 
+## 1) age
+##  2) qualifcation 
+## 3) sex 
+##4)  national identity 
+## 5) ethnicity 
+## 6) tenusere 
+## 7) marital status 
+## 8) economic activity 
+## 9) occupation 
+## 10 ) accomodation 
+## 11) distance travelled to work 
+## 12) general health
+## 13) household-cars
+## 14) houshold cars
+## 15) religion 
+```
+
+```{r}
+
+# Define categories with more precise ordering
+variable_categories <- tibble(
+  variable = pca_correlation$variable,
+  category = case_when(
+    str_detect(variable, "tenure") ~ "Housing Tenure",  # Move tenure to top
+    str_detect(variable, "occupation") ~ "Occupation",  # Move occupation to top
+    str_detect(variable, "^age_") ~ "Age",  # Use regex for specificity
+    str_detect(variable, "qualification") ~ "Qualifications",
+    str_detect(variable, "distance") ~ "Distance Travelled to Work",
+    str_detect(variable, "sex") ~ "Sex",
+    str_detect(variable, "national") ~ "National Identity",
+    str_detect(variable, "ethnic") ~ "Ethnicity",
+    str_detect(variable, "marital") ~ "Marital Status",
+    str_detect(variable, "accommodation") ~ "Accommodation",
+    str_detect(variable, "general") ~ "General Health", 
+    str_detect(variable, "household") ~ "Number of Cars in Household",
+    str_detect(variable, "travel") ~ "Mode of Travel to Work",
+    str_detect(variable, "residence") ~ "Length of Time in UK",
+    str_detect(variable, "disability") ~ "Level of Disability", 
+    str_detect(variable, "unpaid") ~ "Unpaid Carer",           
+    str_detect(variable, "religion") ~ "Religion",
+    str_detect(variable, "economic") ~ "Economic Activity",
+    str_detect(variable, "segment") ~ "Segment",
+    TRUE ~ "Other"
+  )
+)
+
+
+# Merge category labels with correlation data
+pca_correlation_long <- pca_correlation %>%
+  pivot_longer(cols = c(low_diversity, security), names_to = "dimension", values_to = "correlation") %>%
+  left_join(variable_categories, by = "variable")
+
+# Create heatmaps for each category
+ggplot(pca_correlation_long, aes(x = dimension, y = reorder(variable, correlation), fill = correlation)) +
+  geom_tile() +
+  geom_text(aes(label = round(correlation, 2)), color = "black", size = 3) +  # Add numeric values
+  scale_fill_gradient2(low = "blue", mid = "white", high = "red", midpoint = 0) +
+  labs(title = "Correlation Heatmaps: Demographics vs PCA Dimensions",
+       x = "PCA Dimension", y = "Demographic Variable", fill = "Correlation") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  facet_wrap(~category, scales = "free_y")  # Separate heatmaps for each category
+
+```
+
