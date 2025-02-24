@@ -23,9 +23,9 @@ segmentation_df <- read_csv("data/scotland_oa_segmentation.csv")
 census_df <- census_df %>% rename(oa21cd = OA21CD)
 
 # Merge datasets on 'oa21cd'
-merged_df <- left_join(census_df, segmentation_df, by = "oa21cd")
+merged_df_scotland <- left_join(census_df, segmentation_df, by = "oa21cd")
 
-numeric_cols <- merged_df %>% select(where(is.numeric))
+numeric_cols <- merged_df_scotland %>% select(where(is.numeric))
 
 # Compute Pearson correlation matrix
 cor_matrix <- cor(numeric_cols, use = "pairwise.complete.obs", method = "pearson")
@@ -36,8 +36,9 @@ pca_correlation <- cor_matrix %>%
   select(variable, low_diversity, security) %>%
   filter(!variable %in% c("low_diversity", "security"))
 
-# Save the correlation matrix as CSV
+
 write_csv(pca_correlation, ("data/demographic_pca_correlations.csv"))
+write_csv(merged_df_scotland, ("data/merged_df_scotland.csv"))
 
 # Print the first few rows
 print(head(pca_correlation))
@@ -123,34 +124,106 @@ ggplot(pca_correlation_long, aes(x = variable, y = correlation, color = dimensio
 variable_categories <- tibble(
   variable = pca_correlation$variable,
   category = case_when(
-    str_detect(variable, "tenure") ~ "Housing Tenure",  # Move tenure to top
-    str_detect(variable, "occupation") ~ "Occupation",  # Move occupation to top
-    str_detect(variable, "^age_") ~ "Age",  # Use regex for specificity
-    str_detect(variable, "qualification") ~ "Qualifications",
+    str_detect(variable, "tenure") ~ "Housing Tenure",  
+    str_detect(variable, "occupation") ~ "Occupation",  
+    str_detect(variable, "^age_") ~ "Age",  
+    str_detect(variable, "qualification") ~ "Qualification",
     str_detect(variable, "distance") ~ "Distance Travelled to Work",
     str_detect(variable, "sex") ~ "Sex",
     str_detect(variable, "national") ~ "National Identity",
     str_detect(variable, "ethnic") ~ "Ethnicity",
     str_detect(variable, "marital") ~ "Marital Status",
-    str_detect(variable, "accommodation") ~ "Accommodation",
-    str_detect(variable, "general") ~ "General Health", 
+    str_detect(variable, "accommodation") ~ "Accommodation Type",
+    str_detect(variable, "general") ~ "Health Status", 
     str_detect(variable, "household") ~ "Number of Cars in Household",
     str_detect(variable, "travel") ~ "Mode of Travel to Work",
     str_detect(variable, "residence") ~ "Length of Time in UK",
     str_detect(variable, "disability") ~ "Level of Disability", 
-    str_detect(variable, "unpaid") ~ "Unpaid Carer",           
+    str_detect(variable, "unpaid") ~ "Care Status",           
     str_detect(variable, "religion") ~ "Religion",
-    str_detect(variable, "economic") ~ "Economic Activity",
+    str_detect(variable, "economic") ~ "Economic Status",
     str_detect(variable, "segment") ~ "Segment",
     TRUE ~ "Other"
   )
 )
 
+```
 
+```{r}
 # Merge category labels with correlation data
 pca_correlation_long <- pca_correlation %>%
   pivot_longer(cols = c(low_diversity, security), names_to = "dimension", values_to = "correlation") %>%
   left_join(variable_categories, by = "variable")
+
+
+
+write_csv(pca_correlation_long, ("data/demographic_pca_correlations_long_scotland.csv"))
+
+```
+
+```{r}
+
+pca_correlation_long_filtered_1 <- pca_correlation_long %>%
+  filter(category %in% c("Age", "Ethnicity", "Health Status", "Sex", "Qualification", "Housing Tenure", "Occupation", "Economic Satus")) 
+
+plot_filtered_1 <- ggplot(pca_correlation_long_filtered_1, aes(x = dimension, y = reorder(variable, correlation), fill = correlation)) +
+  geom_tile() +
+  geom_text(aes(label = round(correlation, 2)), color = "black", size = 3) +  # Add numeric values
+  scale_fill_gradient2(low = "blue", mid = "white", high = "red", midpoint = 0) +
+  labs(title = "Correlation Heatmaps: Demographics vs PCA Dimensions: Scotland",
+       x = "PCA Dimension", y = "Demographic Variable", fill = "Correlation") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  facet_wrap(~category, scales = "free_y")  # Separate heatmaps for each category
+
+
+print(plot_filtered_1)
+
+```
+
+```{r}
+
+pca_correlation_long_filtered_1 <- pca_correlation_long %>%
+  filter(category %in% c("Age", "Ethnicity", "Health Status", "Sex", "Qualification", "Housing Tenure", "Occupation", "Economic Satus")) 
+
+plot_filtered_1 <- ggplot(pca_correlation_long_filtered_1, aes(x = dimension, y = reorder(variable, correlation), fill = correlation)) +
+  geom_tile() +
+  geom_text(aes(label = round(correlation, 2)), color = "black", size = 3) +
+  scale_fill_gradient2(low = "blue", mid = "white", high = "red", midpoint = 0, limits = c(-1, 1)) +
+  labs(title = "Correlation Heatmaps: Demographics vs PCA Dimensions: Scotland",
+       x = "PCA Dimension", y = "Demographic Variable", fill = "Correlation") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  facet_wrap(~category, scales = "free_y")  # Separate heatmaps for each category
+
+
+print(plot_filtered_1)
+
+```
+
+
+```{r}
+pca_correlation_long_filtered_2 <- pca_correlation_long %>%
+  filter(category %in% c("National Identity", "Marital Satus", "Accommodation Type", "Mode of Travel to Work", "Level of Disability", "Care Status", "Segment")) 
+
+plot_filtered_2 <- ggplot(pca_correlation_long_filtered_2, aes(x = dimension, y = reorder(variable, correlation), fill = correlation)) +
+  geom_tile() +
+  geom_text(aes(label = round(correlation, 2)), color = "black", size = 3) +  
+  scale_fill_gradient2(low = "blue", mid = "white", high = "red", midpoint = 0, limits = c(-1, 1))  +
+  labs(title = "Correlation Heatmaps: Demographics vs PCA Dimensions: Scotland",
+       x = "PCA Dimension", y = "Demographic Variable", fill = "Correlation") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  facet_wrap(~category, scales = "free_y")  # Separate heatmaps for each category
+
+
+print(plot_filtered_2)
+
+
+
+
+
+```
 
 # Create heatmaps for each category
 ggplot(pca_correlation_long, aes(x = dimension, y = reorder(variable, correlation), fill = correlation)) +
