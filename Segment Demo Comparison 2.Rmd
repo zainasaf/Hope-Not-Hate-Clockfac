@@ -1,0 +1,286 @@
+---
+title: "Data Cleaning Segment Comparison"
+author: "Zain Asaf"
+date: "2025-02-25"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+```
+
+```{r} 
+library(tidyverse)
+library(stringr)
+```
+
+```{r} 
+
+scotland <- read_csv("data/merged_df_scotland.csv")
+
+england_wales <- read_csv("data/merged_df_england_wales.csv")
+
+```
+
+```{r}
+## remove scientific notation and 
+
+options(scipen = 999)  
+
+
+
+```
+
+```{r}
+# Recode age variables in England & Wales to match Scotland's categories
+england_wales <- england_wales %>%
+  mutate(
+    age__0_15 = Aged_4_years_and_under + Aged_5_to_9_years + Aged_10_to_14_years,
+    age__16_24 = Aged_15_to_19_years + Aged_20_to_24_years,
+    age__25_34 = Aged_25_to_29_years + Aged_30_to_34_years,
+    age__35_49 = Aged_35_to_39_years + Aged_40_to_44_years + Aged_45_to_49_years,
+    age__50_64 = Aged_50_to_54_years + Aged_55_to_59_years + Aged_60_to_64_years,
+    age__65_and_over = Aged_65_to_69_years + Aged_70_to_74_years + Aged_75_to_79_years + 
+                       Aged_80_to_84_years + Aged_85_years_and_over
+  )
+
+```
+
+```{r}
+
+## define function for england ## 
+
+calculate_normalized_proportions_england <- function(data) {
+  data_long <- data %>%
+    pivot_longer(cols = -segment, names_to = "variable", values_to = "count") %>%  # Reshape first
+    mutate(category = case_when(
+      str_detect(variable, "occupation|Manager|Process") ~ "Occupation",  
+      str_detect(variable, "qualifications|Apprenticeship") ~ "Qualifications",
+      str_detect(variable, "Owned|Shared|rented|Lives") ~ "Housing Tenure",
+      str_detect(variable, "Household_") ~ "Household Deprivation Status",
+      str_detect(variable, "Single_family_household|One_person_household|Multi_person_household|Other_household_types") ~ "Household Type",  
+      str_detect(variable, "Male|Female") ~ "Sex",
+      str_detect(variable, "national|identity|identities") ~ "National Identity",
+      str_detect(variable, "Asian|Black|Mixed|White|Other_ethnic|Any_other_ethnic") ~ "Ethnicity",
+      str_detect(variable, "Economically") ~ "Economic Status",
+      str_detect(variable, "Europe|Africa|Middle_East|The_Americas|British_Overseas|Antarctica") ~ "Place of Birth",
+      str_detect(variable, "Married|Divorced|Separated|Widowed|Never_married") ~ "Marital Status",
+      str_detect(variable, "deprivation") ~ "Household Deprivation Status",
+      str_detect(variable, "Welsh") ~ "Welsh Language",
+      str_detect(variable, "Not_in") ~ "Employment Status",
+      str_detect(variable, "health") ~ "Health Status", 
+      str_detect(variable, "Christian|Buddhist|Hindu|Jewish|Muslim|Sikh|Other_religion|Not_answered|No_religion") ~ "Religion",
+      str_detect(variable, "All_houshold_members|Ethnic_groups_differ|_same_ethnic_group") ~ "Household Ethnic Composition",
+      str_detect(variable, "segment") ~ "Segment",
+      str_detect(variable, "Aged") ~ "Age",
+      TRUE ~ "Other"
+    )) %>%
+    group_by(segment, category) %>% 
+    summarise(total_count = sum(count, na.rm = TRUE), .groups = "drop") %>%  segment-category
+    group_by(segment, category) %>% 
+    mutate(
+      proportion = (total_count / sum(total_count)) * 100,  
+      proportion = round(proportion, 2),
+      proportion_formatted = paste0(proportion, "%")  
+    ) %>%
+    select(segment, category, variable, proportion, proportion_formatted)  
+
+  return(data_long)
+}
+
+
+```
+
+```{r}
+england_summary <- calculate_normalized_proportions_england(england_wales) %>% mutate(region = "England & Wales")
+
+
+```
+
+```{r}
+
+## define function for Scotland 
+
+calculate_normalized_proportions_scotland <- function(data) {
+  data_long <- data %>%
+    group_by(segment) %>%
+    summarise(across(where(is.numeric), sum, na.rm = TRUE)) %>%
+    pivot_longer(cols = -segment, names_to = "variable", values_to = "count") %>%
+    mutate(category = case_when(
+      str_detect(variable, "tenure") ~ "Housing Tenure",  
+      str_detect(variable, "occupation") ~ "Occupation",  
+      str_detect(variable, "age__") ~ "Age",  
+      str_detect(variable, "qualifications") ~ "Qualification",
+      str_detect(variable, "distance_to_work") ~ "Distance Travelled to Work",
+      str_detect(variable, "sex__") ~ "Sex",
+      str_detect(variable, "national_identity") ~ "National Identity",
+      str_detect(variable, "ethnicity__") ~ "Ethnicity",
+      str_detect(variable, "marital_status") ~ "Marital Status",
+      str_detect(variable, "accommodation_type") ~ "Accommodation Type",
+      str_detect(variable, "general_health") ~ "Health Status", 
+      str_detect(variable, "cars_in_household") ~ "Number of Cars in Household",
+      str_detect(variable, "travel_mode") ~ "Mode of Travel to Work",
+      str_detect(variable, "residence_length") ~ "Length of Time in UK",
+      str_detect(variable, "disability_level") ~ "Level of Disability", 
+      str_detect(variable, "unpaid_carers") ~ "Care Status",           
+      str_detect(variable, "religion__") ~ "Religion",
+      str_detect(variable, "economic_status") ~ "Economic Status",
+      str_detect(variable, "segment") ~ "Segment",
+      TRUE ~ "Other"
+    )) %>%
+    group_by(segment, category) %>%
+    mutate(proportion = count / sum(count) * 100) %>%  # Ensure 100% sum per category
+    select(segment, variable, category, proportion)
+  
+  return(data_long)
+}
+
+```
+
+```{r}
+# Apply function to both datasets
+scotland_summary <- calculate_normalized_proportions_scotland(scotland) %>% mutate(region = "Scotland")
+england_summary <- calculate_normalized_proportions_england(england_wales) %>% mutate(region = "England & Wales")
+
+# Combine for comparison
+comparison_summary <- bind_rows(scotland_summary, england_summary)
+
+comparison_summary <- comparison_summary %>%
+  mutate(proportion = round(proportion, 2))  # Round to 2 decimal places
+
+
+
+```
+
+
+
+
+
+calculate_normalized_proportions <- function(data) {
+  # Step 1: Aggregate counts by segment
+  data_long <- data %>%
+    group_by(segment) %>%
+    summarise(across(where(is.numeric), sum, na.rm = TRUE)) %>%
+    pivot_longer(cols = -segment, names_to = "variable", values_to = "count") %>%
+    # Step 2: Assign each variable to a category
+    mutate(category = case_when(
+      str_detect(variable, "occupation|Manager|Process") ~ "Occupation",  
+      str_detect(variable, "qualifications|Apprenticeship") ~ "Qualifications",
+      str_detect(variable, "Owned|Shared|rented|Lives") ~ "Housing Tenure",
+      str_detect(variable, "Household_") ~ "Household Deprivation Status",
+      str_detect(variable, "Single_family_household|One_person_household|Multi_person_household|Other_household_types") ~ "Household Type",  
+      str_detect(variable, "Male|Female") ~ "Sex",
+      str_detect(variable, "national|identity|identities") ~ "National Identity",
+      str_detect(variable, "Asian|Black|Mixed|White|Other_ethnic|Any_other_ethnic") ~ "Ethnicity",
+      str_detect(variable, "Economically") ~ "Economic Status",
+      str_detect(variable, "Europe|Africa|Middle_East|The_Americas|British_Overseas|Antarctica") ~ "Place of Birth",
+      str_detect(variable, "Married|Divorced|Separated|Widowed|Never_married") ~ "Marital Status",
+      str_detect(variable, "deprivation") ~ "Household Deprivation Status",
+      str_detect(variable, "Welsh") ~ "Welsh Language",
+      str_detect(variable, "Not_in") ~ "Employment Status",
+      str_detect(variable, "health") ~ "Health Status", 
+      str_detect(variable, "Christian|Buddhist|Hindu|Jewish|Muslim|Sikh|Other_religion|Not_answered|No_religion") ~ "Religion",
+      str_detect(variable, "All_houshold_members|Ethnic_groups_differ|_same_ethnic_group") ~ "Household Ethnic Composition",
+      str_detect(variable, "segment") ~ "Segment",
+      str_detect(variable, "Aged") ~ "Age",
+      TRUE ~ "Other"
+    ))
+
+```
+
+```{r}
+# Apply function to both datasets
+scotland_summary <- calculate_normalized_proportions(scotland) %>% mutate(region = "Scotland")
+england_summary <- calculate_normalized_proportions(england_wales) %>% mutate(region = "England & Wales")
+
+# Combine for comparison
+comparison_summary <- bind_rows(scotland_summary, england_summary)
+
+
+
+
+```
+
+
+
+
+
+```{r}
+
+# Function to calculate proportions by segment
+calculate_demographic_proportions <- function(data) {
+  data %>%
+    group_by(segment) %>%  # Group by segment
+    summarise(across(where(is.numeric), mean, na.rm = TRUE)) %>%  # Calculate mean proportions
+    pivot_longer(cols = -segment, names_to = "variable", values_to = "proportion")  # Convert to long format
+}
+
+```
+
+```{r}
+# Apply function to both datasets
+scotland_summary <- calculate_demographic_proportions(scotland) %>% mutate(region = "Scotland")
+england_summary <- calculate_demographic_proportions(england_wales) %>% mutate(region = "England & Wales")
+
+# Combine both for comparison
+comparison_summary <- bind_rows(scotland_summary, england_summary)
+
+
+
+
+```
+
+
+
+```{r}
+# Recode age variables in England & Wales to match Scotland's categories
+england_wales <- england_wales %>%
+  mutate(
+    age__0_15 = Aged_4_years_and_under + Aged_5_to_9_years + Aged_10_to_14_years,
+    age__16_24 = Aged_15_to_19_years + Aged_20_to_24_years,
+    age__25_34 = Aged_25_to_29_years + Aged_30_to_34_years,
+    age__35_49 = Aged_35_to_39_years + Aged_40_to_44_years + Aged_45_to_49_years,
+    age__50_64 = Aged_50_to_54_years + Aged_55_to_59_years + Aged_60_to_64_years,
+    age__65_and_over = Aged_65_to_69_years + Aged_70_to_74_years + Aged_75_to_79_years + 
+                       Aged_80_to_84_years + Aged_85_years_and_over
+  )
+
+```
+
+```{r}
+
+## recode ethnicity## 
+
+england_wales <- england_wales %>%
+  mutate(
+    ethnicity__white = White
+    ethnicity__asian = Indian + Pakistani + Bangladeshi + Chinese + Other_Asian,
+    ethnicity__black = Black_African + Black_Caribbean + Other_Black,
+    ethnicity__mixed = Mixed_White_and_Black_Caribbean + Mixed_White_and_Black_African + Mixed_White_and_Asian + Other_Mixed,
+    ethnicity__other = Other_ethnicity
+  )
+
+```
+
+
+
+
+
+
+
+
+
+
+
+```{r}
+## recode natioanl identity variables in England & Wales to match Scotland's categories
+
+england_wales <- england_wales %>%
+  mutate(
+    national_identity__british = British,
+    national_identity__english = English,
+    national_identity__welsh = Welsh,
+    national_identity__other = Other_national_identity
+  )
+
+```
