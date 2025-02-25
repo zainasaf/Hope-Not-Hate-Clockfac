@@ -1,0 +1,263 @@
+---
+title: "Segment_Demo Comparison"
+author: "Zain Asaf"
+date: "2025-02-24"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+```
+
+```{r} 
+library(tidyverse)
+library(ggplot2)
+library(readr)
+```
+
+```{r}
+scotland <- read_csv("data/merged_df_scotland.csv")
+
+england_wales <- read_csv("data/merged_df_england_wales.csv")
+
+```
+
+```{r}
+
+library(tidyverse)
+
+# Preprocess the England/Wales data
+england_wales <- england_wales %>%
+  rename(
+    # Rename columns if necessary (based on your data structure)
+    # For example:
+    # sex_female = Female,
+    # sex_male = Male
+  ) %>%
+  mutate(
+    age_0_15 = Aged_4_years_and_under + Aged_5_to_9_years + Aged_10_to_14_years,
+    age_16_24 = Aged_15_to_19_years + Aged_20_to_24_years,
+    age_25_34 = Aged_25_to_29_years + Aged_30_to_34_years,
+    age_35_49 = Aged_35_to_39_years + Aged_40_to_44_years + Aged_45_to_49_years,
+    age_50_64 = Aged_50_to_54_years + Aged_55_to_59_years + Aged_60_to_64_years,
+    age_65_and_over = Aged_65_to_69_years + Aged_70_to_74_years + Aged_75_to_79_years + Aged_80_to_84_years + Aged_85_years_and_over
+  )
+
+# Print the first few rows of the cleaned data to verify
+head(england_wales)
+
+```
+
+```{r}
+
+
+segment_num <- 6
+
+# Filter for the specified segment
+england_wales_segment <- england_wales %>%
+  filter(segment == segment)
+
+# Pivot and summarize
+england_wales_summary <- england_wales_segment %>%
+  pivot_longer(cols = -c(oa21cd, segment, segment_name),  # Convert all demographic vars into long format
+               names_to = "category", 
+               values_to = "value") %>%
+  group_by(category) %>%
+  summarize(mean_value = mean(value, na.rm = TRUE)) %>%
+  ungroup()
+
+# View output
+print(england_wales_summary)
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+```{r}
+
+# Create the variable_categories tibble
+variable_categories <- tibble(
+  variable = colnames(england_wales),
+  category = case_when(
+    str_detect(variable, "occupation|Manager|Process") ~ "Occupation",  
+    str_detect(variable, "qualifications|Apprenticeship") ~ "Qualifications",
+    str_detect(variable, "Owned|Shared|rented|Lives") ~ "Housing Tenure",
+    str_detect(variable, "Household_") ~ "Household Deprivation Status",
+    str_detect(variable, "Single_family_household|One_person_household|Multi_person_household|Other_household_types") ~ "Household Type",  
+    str_detect(variable, "Male|Female") ~ "Sex",
+    str_detect(variable, "national|identity|identities") ~ "National Identity",
+    str_detect(variable, "Asian|Black|Mixed|White|Other_ethnic|Any_other_ethnic") ~ "Ethnicity",
+    str_detect(variable, "Economically") ~ "Economic Status",
+    str_detect(variable, "Europe|Africa|Middle_East|The_Americas|British_Overseas|Antarctica") ~ "Place of Birth",
+    str_detect(variable, "Married|Divorced|Separated|Widowed|Never_married") ~ "Marital Status",
+    str_detect(variable, "deprivation") ~ "Household Deprivation Status",
+    str_detect(variable, "Welsh") ~ "Welsh Language",
+    str_detect(variable, "Not_in") ~ "Employment Status",
+    str_detect(variable, "health") ~ "Health Status", 
+    str_detect(variable, "Christian|Buddhist|Hindu|Jewish|Muslim|Sikh|Other_religion|Not_answered|No_religion") ~ "Religion",
+    str_detect(variable, "All_houshold_members|Ethnic_groups_differ|_same_ethnic_group") ~ "Household Ethnic Composition",
+    str_detect(variable, "segment") ~ "Segment",
+    str_detect(variable, "age") ~ "Age",  # Moved this below "Household Type"
+    TRUE ~ "Other"
+  )
+)
+
+```
+
+
+```{r}
+
+
+england_wales_long <- england_wales %>%
+  pivot_longer(
+    cols = -c(oa21cd, segment, segment_name),  # Exclude both numeric 'segment' and character 'segment_name'
+    names_to = "variable",
+    values_to = "value"
+  )
+
+
+```
+
+
+
+
+# Convert Scotland data to long format
+scotland_long <- scotland_clean %>%
+  pivot_longer(
+    cols = -c(segment),  # Exclude segment from pivoting
+    names_to = "variable",
+    values_to = "value"
+  )
+
+# Join the long data with variable_categories to add the category column
+england_wales_long <- england_wales_long %>%
+  left_join(variable_categories, by = "variable")
+
+scotland_long <- scotland_long %>%
+  left_join(variable_categories, by = "variable")
+
+# Define the segment number
+segment_num <- 6
+
+# Filter the data for the specified segment
+england_wales_segment <- england_wales_long %>%
+  filter(segment == segment_num)
+
+scotland_segment <- scotland_long %>%
+  filter(segment == segment_num)
+
+# Summarize the demographic variables for the specified segment in England/Wales
+england_wales_summary <- england_wales_segment %>%
+  group_by(category, variable) %>%
+  summarize(
+    mean_value = mean(value, na.rm = TRUE)
+  ) %>%
+  ungroup()
+
+# Summarize the demographic variables for the specified segment in Scotland
+scotland_summary <- scotland_segment %>%
+  group_by(category, variable) %>%
+  summarize(
+    mean_value = mean(value, na.rm = TRUE)
+  ) %>%
+  ungroup()
+
+# Plot for England/Wales
+ggplot(england_wales_summary, aes(x = variable, y = mean_value, fill = category)) +
+  geom_bar(stat = "identity") +
+  coord_flip() +
+  labs(title = "Demographic Summary for Segment 6 in England/Wales", x = "Demographic Variable", y = "Mean Value") +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))
+
+# Plot for Scotland
+ggplot(scotland_summary, aes(x = variable, y = mean_value, fill = category)) +
+  geom_bar(stat = "identity") +
+  coord_flip() +
+  labs(title = "Demographic Summary for Segment 6 in Scotland", x = "Demographic Variable", y = "Mean Value") +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))
+
+
+
+
+
+
+
+
+
+```
+
+```{r}
+
+
+
+# Preprocess the England/Wales data
+england_wales_clean <- england_wales %>%
+  rename(
+    oa21cd = oa21cd,
+   # segment = `...1`,
+    sex_female = Female,
+    sex_male = Male
+  ) %>%
+  mutate(
+    age_0_15 = Aged_4_years_and_under + Aged_5_to_9_years + Aged_10_to_14_years,
+    age_16_24 = Aged_15_to_19_years + Aged_20_to_24_years,
+    age_25_34 = Aged_25_to_29_years + Aged_30_to_34_years,
+    age_35_49 = Aged_35_to_39_years + Aged_40_to_44_years + Aged_45_to_49_years,
+    age_50_64 = Aged_50_to_54_years + Aged_55_to_59_years + Aged_60_to_64_years,
+    age_65_and_over = Aged_65_to_69_years + Aged_70_to_74_years + Aged_75_to_79_years + Aged_80_to_84_years + Aged_85_years_and_over
+  )
+
+
+
+
+```
+
+```{r}
+
+# Filter data for the specified segment (e.g., segment 6)
+segment_num <- 6
+england_wales_segment <- england_wales_clean %>% filter(segment == segment_num)
+scotland_segment <- scotland_clean %>% filter(segment == segment_num)
+
+# Summarize the demographic variables for the specified segment in England/Wales
+england_wales_summary <- england_wales_segment %>%
+  summarize(
+    sex_female = mean(sex_female, na.rm = TRUE),
+    sex_male = mean(sex_male, na.rm = TRUE),
+    age_0_15 = mean(age_0_15, na.rm = TRUE),
+    age_16_24 = mean(age_16_24, na.rm = TRUE),
+    age_25_34 = mean(age_25_34, na.rm = TRUE),
+    age_35_49 = mean(age_35_49, na.rm = TRUE),
+    age_50_64 = mean(age_50_64, na.rm = TRUE),
+    age_65_and_over = mean(age_65_and_over, na.rm = TRUE)
+  )
+
+# Summarize the demographic variables for the specified segment in Scotland
+scotland_summary <- scotland_segment %>%
+  summarize(
+    sex_female = mean(sex_female, na.rm = TRUE),
+    sex_male = mean(sex_male, na.rm = TRUE),
+    age_0_15 = mean(age_0_15, na.rm = TRUE),
+    age_16_24 = mean(age_16_24, na.rm = TRUE),
+    age_25_34 = mean(age_25_34, na.rm = TRUE),
+    age_35_49 = mean(age_35_49, na.rm = TRUE),
+    age_50_64 = mean(age_50_64, na.rm = TRUE),
+    age_65_and_over = mean(age_65_and_over, na.rm = TRUE)
+  )
+
+# Combine the summaries for comparison
+comparison_result <- england_wales_summary %>%
+  bind_rows(scotland_summary) %>%
+  mutate(region = c("England/Wales", "Scotland"))
+
+# Print the comparison result
+print(comparison_result)
