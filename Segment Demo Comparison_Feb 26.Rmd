@@ -1,0 +1,170 @@
+---
+title: "Untitled"
+author: "Zain Asaf"
+date: "2025-02-26"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+```
+
+```{r}
+# Rename variable so they england dataset has same as soctland 
+
+england_wales <- read.csv("data/merged_df_england_wales.csv")
+scotland <- read.csv("data/merged_df_scotland.csv")
+
+library(tidyverse)
+
+
+sort(names(england_wales))
+
+england_wales_2 <- england_wales %>%
+  mutate(
+    age__0_15 = Aged_4_years_and_under + Aged_5_to_9_years + Aged_10_to_14_years,
+    age__16_24 = Aged_15_to_19_years + Aged_20_to_24_years,
+    age__25_34 = Aged_25_to_29_years + Aged_30_to_34_years,
+    age__35_49 = Aged_35_to_39_years + Aged_40_to_44_years + Aged_45_to_49_years,
+    age__50_64 = Aged_50_to_54_years + Aged_55_to_59_years + Aged_60_to_64_years,
+    age__65_and_over = Aged_65_to_69_years + Aged_70_to_74_years + Aged_75_to_79_years + 
+                       Aged_80_to_84_years + Aged_85_years_and_over
+  )
+
+england_wales_3 <- england_wales_2 %>%
+  select(-c(Aged_4_years_and_under, Aged_5_to_9_years, Aged_10_to_14_years,
+            Aged_15_to_19_years, Aged_20_to_24_years, Aged_25_to_29_years, Aged_30_to_34_years,
+            Aged_35_to_39_years, Aged_40_to_44_years, Aged_45_to_49_years, Aged_50_to_54_years,
+            Aged_55_to_59_years, Aged_60_to_64_years, Aged_65_to_69_years, Aged_70_to_74_years,
+            Aged_75_to_79_years, Aged_80_to_84_years, Aged_85_years_and_over))
+
+
+
+england_wales_rename <- england_wales_3 %>%
+  rename(
+    sex__female = Female,
+    sex__male = Male,
+   # age__0_15 = Aged_4_years_and_under,
+    #age__0_15 = Aged_5_to_9_years,
+    #age__0_15 = Aged_10_to_14_years,
+    #age__16_24 = Aged_15_to_19_years,
+    #age__16_24 = Aged_20_to_24_years,
+    #age__25_34 = Aged_25_to_29_years,
+    #age__25_34 = Aged_30_to_34_years,
+    #age__35_49 = Aged_35_to_39_years,
+    #age__35_49 = Aged_40_to_44_years,
+    #age__35_49 = Aged_45_to_49_years,
+    #age__50_64 = Aged_50_to_54_years,
+    #age__50_64 = Aged_55_to_59_years,
+    #age__50_64 = Aged_60_to_64_years,
+    #age__65_and_over = Aged_65_to_69_years,
+    #age__65_and_over = Aged_70_to_74_years,
+    #age__65_and_over = Aged_75_to_79_years,
+    #age__65_and_over = Aged_80_to_84_years,
+    #age__65_and_over = Aged_85_years_and_over,
+    qualification__no_qualifications = No_qualifications,
+    qualification__level_1_or_2 = Level_1_and_entry_level_qualifications | Level_2_qualifications,
+    qualification__level_3 = Level_3_qualifications,
+    qualification__level_4_and_above = Level_4_qualifications_or_above,
+    qualification__other = Other_qualifications,
+
+    # Economic Activity
+    economic_activity__full_time = Economically_active_.excluding_full_time_students._In_employment_Employee_Full_time,
+    economic_activity__other_inactive = Economically_inactive_Other, 
+    economic_activity__part_time = Economically_active_.excluding_full_time_students._In_employment_Employee_Part_time,
+    economic_activity__self_employed = Economically_active_.excluding_full_time_students._In_employment_Self_employed_with_employees,
+    economic_activity__unemployed = Economically_active_.excluding_full_time_students._Unemployed,
+    economic_activity_unemployed = Economically_active_and_a_full_time_student_Unemployed,
+    economic_activity__student = Economically_active_and_a_full_time_student_In_employment | Economically_active_and_a_full_time_student_Unemployed,
+    economic_activity__retired = Economically_inactive_Retired,
+    economic_activity__student = Economically_inactive_Student,
+    economic_activity__looking_after_home_or_family = Economically_inactive_Looking_after_home_or_family,               
+    economic_activity__long_term_sick_or_disabled = Economically_inactive_Long_term_sick_or_disabled,
+    economic_activity__other_economically_inactive = Economically_inactive_Other,
+
+    # Ethnicity
+    ethnicity__white = White,
+    ethnicity__mixed = Mixed_or_Multiple_ethnic_groups,
+    ethnicity__asian = Asian_Asian_British_or_Asian_Welsh,
+    ethnicity__black = Black_Black_British_Black_Welsh_Caribbean_or_African,
+    ethnicity__other = Other_ethnic_group,
+
+    # Tenure
+    tenure__owned_outright = Owned_Owns_outright,
+    tenure__owned_with_mortgage = Owned_Owns_with_a_mortgage_or_loan,
+    tenure__shared_equity = Shared_ownership,
+    tenure__social_rented = Social_rented,
+    tenure__private_rented = Private_rented,
+    tenure__rent_free = Lives_rent_free,
+
+    # Health
+    health_status__good = Good_health,
+    health_status__fair = Fair_health,
+    health_status__bad = Bad_health,
+
+    # Religion
+    religion__no_religion = No_religion,
+    religion__catholic_or_other_christian = Christian,
+    religion__other = Buddhist | Hindu | Jewish | Sikh | Other_religion,
+    religion__muslim = Muslim,
+    religion__other = Sikh,
+    religion__not_stated = Not_answered,
+
+    # Disability
+   # disability__limited_a_lot = Disability_Limited_A_Lot,
+  #  disability__limited_a_little = Disability_Limited_A_Little,
+   # disability__not_limited = Disability_Not_Limited,
+
+    # Occupations 
+    occupation__manager_director_senior_official = X1_Managers_directors_and_senior_officials,
+    occupation__professional = X2_Professional_occupations,
+    occupation__associate_professional_technical = X3_Associate_professional_and_technical_occupations,
+    occupation__administrative_secretarial = X4_Administrative_and_secretarial_occupations,
+    occupation__skilled_trade = X5_Skilled_trades_occupations,
+    occupation__caring_leisure_service = X6_Caring_leisure_and_other_service_occupations,
+    occupation__sales_customer_service = X7_Sales_and_customer_service_occupations,
+    occupation__process_plant_machine_operative = X8_Process_plant_and_machine_operatives,
+    occupation__elementary_occupations = X9_Elementary_occupations,
+
+    # Marital Status
+    marital_status__never_married = Never_married_and_never_registered_a_civil_partnership,
+    marital_status__married = Married_or_in_a_registered_civil_partnership_In_a_registered_civil_partnership_Opposite_sex |   Married_or_in_a_registered_civil_partnership_In_a_registered_civil_partnership_Same_sex |Married_or_in_a_registered_civil_partnership_Married_Opposite_sex |
+    Married_or_in_a_registered_civil_partnership_Married_Same_sex,
+    marital_status__widowed = Widowed_or_surviving_civil_partnership_partner,
+    marital_status__divorced = Divorced_or_civil_partnership_dissolved
+  )
+
+# Check the new column names
+print(colnames(england_wales_rename))
+
+
+
+
+
+
+
+
+```
+
+# Group by summarise mean
+
+data_joined <- full_join(
+ 
+  england_wales %>%
+    group_by(segment) %>%
+    summarise(across(where(is.numeric), mean, na.rm = TRUE)),
+
+  scotland %>%
+    group_by(segment) %>%
+    summarise(across(where(is.numeric), mean, na.rm = TRUE)),
+ 
+  by="segment")
+
+# Then get difference
+
+data_joined %>%
+  select(segment,Female,sex__female) %>%
+  mutate(difference = Female-sex__female)
+
+
+
