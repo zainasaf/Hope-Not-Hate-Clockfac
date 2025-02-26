@@ -1,0 +1,50 @@
+---
+title: "Segment Demo Comprison"
+author: "Zain Asaf"
+date: "2025-02-26"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+```
+
+```{r}
+library(tidyverse)
+
+```
+
+```{r}
+
+    england_wales <- readRDS("data/england_wales_rename.rds")
+
+    scotland <- read.csv("data/merged_df_scotland.csv")
+
+
+```
+
+
+```{r}
+
+# Group by summarise mean
+
+data_joined <- full_join(
+ 
+  england_wales %>%
+    group_by(segment) %>%
+    summarise(across(where(is.numeric), mean, na.rm = TRUE)),
+
+  scotland %>%
+    group_by(segment) %>%
+    summarise(across(where(is.numeric), mean, na.rm = TRUE)),
+ 
+  by="segment")
+
+# Then get difference
+
+data_joined %>%
+  select(segment,Female,sex__female) %>%
+  mutate(difference = Female-sex__female)
+
+
+
