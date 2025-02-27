@@ -1,0 +1,50 @@
+---
+title: "Plots"
+author: "Zain Asaf"
+date: "2025-02-27"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+```
+
+```{r}
+ggplot(top_segments_demographic, aes(x = reorder(variable, abs_value), y = value, fill = value > 0)) +
+  geom_bar(stat = "identity") +
+  facet_wrap(~ demographic_group, scales = "free_y") +
+  coord_flip() + 
+  scale_fill_manual(values = c("red", "blue"), labels = c("Scotland Higher", "England/Wales Higher")) +
+  labs(title = "Demographic Differences Between England/Wales and Scotland",
+       x = "Demographic Group",
+       y = "Difference (England - Scotland)",
+       fill = "Higher Value In") +
+  theme_minimal()
+
+```
+
+```{r}
+
+ggplot(top_segments_demographic, aes(x = segment, y = variable, fill = abs_value)) +
+  geom_tile() +
+  scale_fill_gradient2(low = "blue", mid = "white", high = "red", midpoint = 0) +
+  labs(title = "Heatmap of Demographic Differences (England - Scotland)",
+       x = "Segment",
+       y = "Demographic Group",
+       fill = "Absolute Difference") +
+  theme_minimal()
+
+```
+
+```{r}
+
+ggplot(top_segments_demographic, aes(x = reorder(variable, abs_value), y = abs_value, color = demographic_group)) +
+  geom_segment(aes(xend = variable, yend = 0), color = "gray") +
+  geom_point(size = 3) +
+  coord_flip() +
+  labs(title = "Top 3 Demographic Differences in Each Segment",
+       x = "Demographic Group",
+       y = "Absolute Difference") +
+  theme_minimal()
+
+
