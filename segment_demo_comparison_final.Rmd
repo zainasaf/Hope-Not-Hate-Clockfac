@@ -11,18 +11,15 @@ knitr::opts_chunk$set(echo = FALSE)
 
 ```{r}
 library(tidyverse)
+library(purrr)
 
 ```
 
 ```{r}
+ england_wales <- readRDS("data/england_wales_rename.rds")
 
-    england_wales <- readRDS("data/england_wales_rename.rds")
-
-    scotland <- read.csv("data/merged_df_scotland.csv")
-
-
+  scotland <- read.csv("data/merged_df_scotland.csv")
 ```
-
 
 ```{r}
 
@@ -40,11 +37,106 @@ data_joined <- full_join(
  
   by="segment")
 
-# Then get difference
-
-data_joined %>%
-  select(segment,Female,sex__female) %>%
-  mutate(difference = Female-sex__female)
+write.csv(data_joined, "data/data_joined.csv")
 
 
+```
+
+```{r}
+
+# Function to subtract .y variables from .x variables
+subtract_xy <- function(df) {
+  # Get all column names with .x and .y suffixes
+  x_columns <- grep("\\.x$", colnames(df), value = TRUE)
+  y_columns <- grep("\\.y$", colnames(df), value = TRUE)
+  
+  # Remove the suffix to get base column names
+  base_names <- sub("\\.x$", "", x_columns)
+  
+  # Create a new data frame with the differences
+  difference_df <- df %>%
+    select(segment, all_of(x_columns), all_of(y_columns)) %>%
+    mutate(across(all_of(x_columns), 
+                  ~ . - df[[sub("\\.x$", ".y", cur_column())]], 
+                  .names = "difference_{col}")) %>%
+    select(segment, starts_with("difference_"))
+  
+  # Rename the columns to remove the "difference_" prefix
+  colnames(difference_df) <- c("segment", base_names)
+  
+  return(difference_df)
+}
+
+# Apply the function to your data frame
+data_joined_diff <- subtract_xy(data_joined)
+
+
+write.csv(data_joined_diff, "data/data_joined_diff.csv")
+
+```
+
+```{r}
+
+numeric_cols <- data_joined_diff %>% select(-c(segment)) %>% names()
+
+# Function to get top 3 absolute values for a variable
+get_top_segments <- function(var) {
+  data_joined_diff %>%
+    select(segment, all_of(var)) %>%
+    arrange(desc(abs(!!sym(var)))) %>%
+    slice_head(n = 3) %>%
+    mutate(variable = var)  
+}
+
+# Apply function to each numeric column
+top_segments_list <- map(numeric_cols, get_top_segments)
+
+# Combine results into a single dataframe
+top_segments_df <- bind_rows(top_segments_list) %>%
+  select(variable, segment, everything())  
+
+# View results
+print(top_segments_df)
+
+```
+
+
+
+
+```{r}
+
+
+
+top_segments_demographic <- data_joined_diff %>% 
+  pivot_longer(cols = -segment, names_to = "variable", values_to = "value") %>% 
+  mutate(demographic_group = case_when(
+    str_detect(variable, "sex") ~ "Sex",
+    str_detect(variable, "age") ~ "Age",
+    str_detect(variable, "qualification") ~ "Qualification",
+    str_detect(variable, "tenure") ~ "Housing Tenure",
+    str_detect(variable, "ethnicity") ~ "Ethnicity",
+    str_detect(variable, "occupation") ~ "Occupation",
+    str_detect(variable, "economic_activity") ~ "Economic Activity",
+    str_detect(variable, "qualifications") ~ "Qualifications",
+    str_detect(variable, "economic") ~ "Economic Activity",
+    str_detect(variable, "religion") ~ "Religion",
+    TRUE ~ "Other"
+  ))
+
+
+head(top_segments_demographic)
+
+
+top_segments_demographic <- top_segments_demographic %>% 
+  mutate(abs_value = abs(value)) %>%  
+  group_by(demographic_group) %>% 
+  slice_max(order_by = abs_value, n = 3) %>%  
+  ungroup()  
+
+# View the result
+print(top_segments_demographic)
+
+
+
+write.csv(top_segments_demographic, "data/top_segments_demographic.csv")
 
