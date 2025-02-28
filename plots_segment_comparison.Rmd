@@ -1,0 +1,112 @@
+---
+title: "Plots"
+author: "Zain Asaf"
+date: "2025-02-27"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+```
+
+```{r}
+
+library(ggplot2)
+library(tidyverse)
+```
+
+```{r} 
+
+top_segments_demographic <- read_csv("data/top_segments_demographic.csv")
+
+```
+
+```{r}
+ggplot(top_segments_demographic, aes(x = reorder(variable, value), y = value, fill = value > 0)) +
+  geom_bar(stat = "identity") +
+  geom_text(aes(label = segment), 
+          #  position = position_stack(vjust = 0.5),  
+            size = 3, 
+            color = "black") +  
+  facet_wrap(~ demographic_group, scales = "free_y") +
+ # coord_flip() + 
+  scale_fill_manual(values = c("red", "blue"), labels = c("Scotland Higher", "England/Wales Higher")) +
+  labs(title = "Demographic Differences Between England/Wales and Scotland",
+       x = "Demographic Group",
+       y = "Difference (England - Scotland)",
+       fill = "Higher Value In") +
+  theme_minimal()
+
+
+```
+
+```{r}
+
+
+
+# Create a new column that combines variable and segment for labeling
+top_segments_demographic <- top_segments_demographic %>%
+  filter(demographic_group !="Other") %>% 
+  mutate(var_segment = paste0(variable, " (Seg ", segment, ")"))
+
+ggplot(top_segments_demographic, 
+       aes(x = reorder(var_segment, abs_value), y = value, fill = value > 0)) +
+  geom_bar(stat = "identity") +
+  # Add segment labels on the bars
+  geom_text(aes(label = segment,
+                y = ifelse(value >= 0, value/2, value/2)),  # Position in middle of bar
+            size = 3.5, 
+            fontface = "bold",  
+            color = "black") +  
+  # Facet by demographic group
+  facet_wrap(~ demographic_group, scales = "free_y", ncol = 2) +
+  # Flip coordinates for readability
+  coord_flip() +
+  # Set colors for positive and negative values
+  scale_fill_manual(values = c("red", "blue"), 
+                    labels = c("Scotland Higher", "England/Wales Higher")) +
+  # Clean up axis labels - extract just the variable name part
+  scale_x_discrete(labels = function(x) {
+    var_part <- gsub(" \\(Seg .*\\)", "", x)  # Remove segment part
+    gsub("__", ": ", gsub("_", " ", var_part))  # Clean up formatting
+  }) +
+  # Set appropriate labels
+  labs(title = "Demographic Differences Between England/Wales and Scotland",
+       y = "Difference (England - Scotland)",
+       x = NULL,
+       fill = "Higher Value In") +
+  # Improve the theme
+  theme_minimal() +
+  theme(
+    panel.grid.major.y = element_blank(),
+    strip.background = element_rect(fill = "lightgray", color = NA),
+    strip.text = element_text(face = "bold"),
+    axis.text.y = element_text(size = 8, face = "bold")
+  )
+```
+
+```{r}
+
+ggplot(top_segments_demographic, aes(x = segment, y = variable, fill = abs_value)) +
+  geom_tile() +
+  scale_fill_gradient2(low = "blue", mid = "white", high = "red", midpoint = 0) +
+  labs(title = "Heatmap of Demographic Differences (England - Scotland)",
+       x = "Segment",
+       y = "Demographic Group",
+       fill = "Absolute Difference") +
+  theme_minimal()
+
+```
+
+```{r}
+
+ggplot(top_segments_demographic, aes(x = reorder(variable, abs_value), y = abs_value, color = demographic_group)) +
+  geom_segment(aes(xend = variable, yend = 0), color = "gray") +
+  geom_point(size = 3) +
+  coord_flip() +
+  labs(title = "Top 3 Demographic Differences in Each Segment",
+       x = "Demographic Group",
+       y = "Absolute Difference") +
+  theme_minimal()
+
+
