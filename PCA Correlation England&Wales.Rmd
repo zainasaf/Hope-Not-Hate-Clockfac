@@ -19,8 +19,8 @@ library(here)
 
 ```{r}
 
-census_df <- read_csv("data/e&w_census_data.csv") 
-segmentation_df <- read_csv("data/england_and_wales_oa_segmentation.csv")
+census_df <- read_csv(here("data/e&w_census_data.csv")) 
+segmentation_df <- read_csv(here("data/england_and_wales_oa_segmentation.csv"))
 
 ```
 
@@ -43,8 +43,8 @@ pca_correlation <- cor_matrix %>%
   filter(!variable %in% c("low_diversity", "security"))
 
 # Save the correlation matrix as CSV
-write_csv(pca_correlation, ("data/demographic_pca_correlations_e&w.csv"))
-write_csv(merged_df_england_wales, ("data/merged_df_england_wales.csv"))
+write_csv(pca_correlation, here("data/demographic_pca_correlations_e&w.csv"))
+write_csv(merged_df_england_wales,here("data/merged_df_england_wales.csv"))
 
 
 # Print the first few rows
@@ -111,21 +111,7 @@ write_csv(pca_correlation_long, ("data/demographic_pca_correlations_long_e&w.csv
 
 ```
 
-```{r}
-# Create heatmaps for each category
-plot<- ggplot(pca_correlation_long, aes(x = dimension, y = reorder(variable, correlation), fill = correlation)) +
-  geom_tile() +
-  geom_text(aes(label = round(correlation, 2)), color = "black", size = 3) +  # Add numeric values
-  scale_fill_gradient2(low = "blue", mid = "white", high = "red", midpoint = 0) +
-  labs(title = "Correlation Heatmaps: Demographics vs PCA Dimensions England & Wales",
-       x = "PCA Dimension", y = "Demographic Variable", fill = "Correlation") +
-  theme_minimal() +
-  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
-  facet_wrap(~category, scales = "free_y")  # Separate heatmaps for each category
 
-print(plot)
-
-```
 
 ```{r}
 
